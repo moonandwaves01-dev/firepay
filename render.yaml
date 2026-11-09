@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: wallet-demo-api
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: BACKEND_HOST
+        value: 0.0.0.0
+      - key: BACKEND_PORT
+        value: "10000"
+      - key: DATABASE_PATH
+        value: /var/data/users.sqlite3
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+    disk:
+      name: wallet-demo-data
+      mountPath: /var/data
+      sizeGB: 1
