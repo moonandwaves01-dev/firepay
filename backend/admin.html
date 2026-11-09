@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wallet Demo · Admin</title>
+  <style>
+    :root { color-scheme: light; --ink: #173b37; --muted: #71817d; --teal: #0f665b; --line: #e7ecea; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f7f6; color: var(--ink); font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(100% - 32px, 980px); margin: 48px auto; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 27px; }
+    .sub { margin: 6px 0 0; color: var(--muted); }
+    .card { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: 0 8px 24px #173b3708; }
+    #login { max-width: 420px; margin: 9vh auto; }
+    label { display: block; margin: 16px 0 7px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+    input { width: 100%; height: 48px; border: 1px solid #d9e2df; border-radius: 11px; padding: 0 13px; font: inherit; }
+    .password-field { position: relative; width: 100%; }
+    .password-field input { width: 100%; padding-right: 86px; }
+    button { min-height: 43px; border: 0; border-radius: 11px; padding: 0 16px; background: var(--teal); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #e6f1ee; color: var(--teal); }
+    #login button { width: 100%; margin-top: 20px; }
+    #login .password-field button#toggle-password { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 68px; min-width: 68px; min-height: 36px; margin: 0; padding: 0 8px; background: #e6f1ee; color: var(--teal); }
+    #message { min-height: 20px; color: #b33b32; font-size: 13px; margin: 12px 0 0; }
+    .tools { display: flex; align-items: center; gap: 12px; }
+    .count { margin: 0 0 16px; color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 13px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-size: 11px; letter-spacing: .07em; }
+    td { font-size: 14px; }
+    .empty { color: var(--muted); text-align: center; padding: 36px 12px; }
+    .notice { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 16px 2px; }
+    .address-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    #address-message { min-height: 20px; color: var(--teal); font-size: 13px; margin: 12px 0 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 600px) { main { margin: 25px auto; } header { align-items: flex-start; } h1 { font-size: 22px; } .card { padding: 16px; } .address-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="login" class="card">
+      <h1>Admin sign in</h1>
+      <p class="sub">Wallet Demo user dashboard</p>
+      <form id="login-form">
+        <label for="username">ADMIN USERNAME</label>
+        <input id="username" name="username" autocomplete="username" required>
+        <label for="password">ADMIN PASSWORD</label>
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button id="toggle-password" type="button" aria-pressed="false">Show</button>
+        </div>
+        <button type="submit">Sign in</button>
+        <p id="message" role="status"></p>
+      </form>
+    </section>
+
+    <section id="dashboard" hidden>
+      <header>
+        <div><h1>Backend admin</h1><p class="sub">Users, deposit requests, and referral commissions</p></div>
+        <div class="tools"><button id="refresh" class="secondary" type="button">Refresh</button><button id="logout" class="secondary" type="button">Sign out</button></div>
+      </header>
+      <div class="card">
+        <p id="count" class="count">Loading users…</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>USER ID</th><th>NAME</th><th>MOBILE</th><th>INVITE CODE</th><th>INVITED BY</th><th>SIGNED UP</th></tr></thead>
+            <tbody id="users"></tbody>
+          </table>
+          <p id="empty" class="empty" hidden>No users have signed up yet.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h2>Deposit requests</h2>
+        <p class="count">A pending request is not proof of payment. Confirm only after checking the payment with your provider.</p>
+        <div class="table-wrap"><table><thead><tr><th>ORDER</th><th>USER</th><th>TYPE</th><th>AMOUNT</th><th>STATUS</th><th>CREATED</th><th>ACTION</th></tr></thead><tbody id="transactions"></tbody></table><p id="transactions-empty" class="empty" hidden>No deposit requests yet.</p></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h2>Referral commission ledger · 0.3%</h2>
+        <p class="count">A commission entry is created once when a referred user’s deposit is confirmed.</p>
+        <div class="table-wrap"><table><thead><tr><th>REFERRER</th><th>REFERRED USER</th><th>DEPOSIT</th><th>RATE</th><th>COMMISSION</th><th>DATE</th></tr></thead><tbody id="commissions"></tbody></table><p id="commissions-empty" class="empty" hidden>No commissions yet.</p></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h2>USDT deposit addresses</h2>
+        <p class="count">Saved addresses are shown to users for the matching network. Double-check each address and network before saving.</p>
+        <form id="usdt-address-form">
+          <div class="address-grid">
+            <div><label for="trc20-address">TRC20 ADDRESS</label><input id="trc20-address" name="TRC20" autocomplete="off" spellcheck="false" maxlength="64" placeholder="T…"></div>
+            <div><label for="erc20-address">ERC20 ADDRESS</label><input id="erc20-address" name="ERC20" autocomplete="off" spellcheck="false" maxlength="64" placeholder="0x…"></div>
+          </div>
+          <button id="save-addresses" type="submit" style="margin-top:16px">Save addresses</button>
+          <p id="address-message" role="status"></p>
+        </form>
+      </div>
+      <p class="notice">Passwords are never displayed here. This Python + SQLite backend is local development only. Live payments require HTTPS hosting and provider-verified payment webhooks; never treat this manual admin action as automatic proof of payment.</p>
+    </section>
+  </main>
+  <script>
+    let token = '';
+    const loginSection = document.querySelector('#login');
+    const dashboard = document.querySelector('#dashboard');
+    const message = document.querySelector('#message');
+    const passwordInput = document.querySelector('#password');
+    const togglePasswordButton = document.querySelector('#toggle-password');
+
+    togglePasswordButton.addEventListener('click', () => {
+      const showPassword = passwordInput.type === 'password';
+      passwordInput.type = showPassword ? 'text' : 'password';
+      togglePasswordButton.textContent = showPassword ? 'Hide' : 'Show';
+      togglePasswordButton.setAttribute('aria-pressed', String(showPassword));
+    });
+
+    document.querySelector('#login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const loginForm = event.currentTarget;
+      message.textContent = '';
+      const form = new FormData(loginForm);
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.get('username'), password: form.get('password') }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not sign in.');
+        token = result.token;
+        loginForm.reset();
+        loginSection.hidden = true;
+        dashboard.hidden = false;
+        await loadDashboard();
+      } catch (error) { message.textContent = error.message || 'Could not reach the backend.'; }
+    });
+
+    function addCells(body, values) {
+      const row = document.createElement('tr');
+      for (const value of values) {
+        const cell = document.createElement('td');
+        cell.textContent = value ?? '';
+        row.append(cell);
+      }
+      body.append(row);
+      return row;
+    }
+
+    async function loadDashboard() {
+      const count = document.querySelector('#count');
+      count.textContent = 'Loading users…';
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [usersResponse, transactionsResponse, commissionsResponse, settingsResponse] = await Promise.all([
+          fetch('/api/admin/users', { headers }),
+          fetch('/api/admin/transactions', { headers }),
+          fetch('/api/admin/commissions', { headers }),
+          fetch('/api/admin/settings/usdt-addresses', { headers }),
+        ]);
+        const [usersResult, transactionsResult, commissionsResult, settingsResult] = await Promise.all([
+          usersResponse.json(), transactionsResponse.json(), commissionsResponse.json(), settingsResponse.json(),
+        ]);
+        if (!usersResponse.ok) throw new Error(usersResult.error || 'Could not load users.');
+        if (!transactionsResponse.ok) throw new Error(transactionsResult.error || 'Could not load deposits.');
+        if (!commissionsResponse.ok) throw new Error(commissionsResult.error || 'Could not load commissions.');
+        if (!settingsResponse.ok) throw new Error(settingsResult.error || 'Could not load USDT addresses.');
+
+        document.querySelector('#trc20-address').value = settingsResult.addresses.TRC20 || '';
+        document.querySelector('#erc20-address').value = settingsResult.addresses.ERC20 || '';
+
+        const usersBody = document.querySelector('#users');
+        usersBody.replaceChildren();
+        document.querySelector('#empty').hidden = usersResult.users.length !== 0;
+        for (const user of usersResult.users) addCells(usersBody, [user.userId, user.name, `+91 ${user.mobile}`, user.inviteCode, user.invitedBy, new Date(user.createdAt).toLocaleString()]);
+        count.textContent = `${usersResult.users.length} registered user${usersResult.users.length === 1 ? '' : 's'}`;
+
+        const transactionsBody = document.querySelector('#transactions');
+        transactionsBody.replaceChildren();
+        document.querySelector('#transactions-empty').hidden = transactionsResult.transactions.length !== 0;
+        for (const transaction of transactionsResult.transactions) {
+          const row = addCells(transactionsBody, [transaction.transactionId, `${transaction.name} · ${transaction.userId}`, transaction.kind, `${transaction.amount} ${transaction.currency}`, transaction.status, new Date(transaction.createdAt).toLocaleString(), '']);
+          if (transaction.status === 'pending' && transaction.kind === 'deposit') {
+            const actionCell = row.lastElementChild;
+            const button = document.createElement('button');
+            button.className = 'secondary';
+            button.textContent = 'Verify & confirm';
+            button.addEventListener('click', () => confirmDeposit(transaction.transactionId));
+            actionCell.append(button);
+          }
+        }
+
+        const commissionsBody = document.querySelector('#commissions');
+        commissionsBody.replaceChildren();
+        document.querySelector('#commissions-empty').hidden = commissionsResult.commissions.length !== 0;
+        for (const item of commissionsResult.commissions) addCells(commissionsBody, [item.referrerUserId, item.referredUserId, `${item.transactionAmount} ${item.currency}`, item.rate, `${item.commissionAmount} ${item.currency}`, new Date(item.createdAt).toLocaleString()]);
+      } catch (error) {
+        if (error.message.includes('session')) signOut();
+        count.textContent = error.message || 'Could not load users.';
+      }
+    }
+
+    async function confirmDeposit(transactionId) {
+      if (!window.confirm('Confirm only after you have verified this deposit with the payment provider.')) return;
+      try {
+        const response = await fetch(`/api/admin/transactions/${encodeURIComponent(transactionId)}/confirm`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}',
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not confirm deposit.');
+        await loadDashboard();
+      } catch (error) { document.querySelector('#count').textContent = error.message || 'Could not confirm deposit.'; }
+    }
+
+    document.querySelector('#usdt-address-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = document.querySelector('#save-addresses');
+      const status = document.querySelector('#address-message');
+      button.disabled = true;
+      status.textContent = 'Saving…';
+      status.style.color = 'var(--teal)';
+      try {
+        const response = await fetch('/api/admin/settings/usdt-addresses', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            TRC20: document.querySelector('#trc20-address').value,
+            ERC20: document.querySelector('#erc20-address').value,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not save addresses.');
+        status.textContent = 'Addresses saved. Refresh the app to load the latest values.';
+      } catch (error) {
+        status.textContent = error.message || 'Could not save addresses.';
+        status.style.color = '#b33b32';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    function signOut() {
+      token = '';
+      dashboard.hidden = true;
+      loginSection.hidden = false;
+      message.textContent = '';
+    }
+    document.querySelector('#refresh').addEventListener('click', loadDashboard);
+    document.querySelector('#logout').addEventListener('click', signOut);
+  </script>
+</body>
+</html>
